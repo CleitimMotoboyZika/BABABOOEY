@@ -109,6 +109,23 @@ local function clampNumber(value, min, max)
     return math.clamp(math.floor(value), min, max)
 end
 
+--- Validate that amount is a finite positive integer.
+local function isValidCoinAmount(amount)
+    return type(amount) == "number" and amount == amount and amount > 0
+end
+
+--- Remove all occurrences of an id from the EquippedItems list.
+local function unequipById(data, id)
+    if type(data.EquippedItems) ~= "table" then
+        return
+    end
+    for i = #data.EquippedItems, 1, -1 do
+        if data.EquippedItems[i] == id then
+            table.remove(data.EquippedItems, i)
+        end
+    end
+end
+
 --- Ensure a loaded table has every key from the default template.
 local function reconcileData(data)
     if type(data) ~= "table" then
@@ -270,9 +287,11 @@ function DataStoreManager.LoadPlayerData(player)
     -- Daily login tracking
     local today = os.date("!%Y-%m-%d")
     if data.LastLoginDate ~= today then
-        if data.LastLoginDate == os.date("!%Y-%m-%d", os.time() - 86400) then
+        local yesterday = os.date("!%Y-%m-%d", os.time() - 86400)
+        if data.LastLoginDate == yesterday then
             data.DailyLoginStreak = data.DailyLoginStreak + 1
         else
+            -- First login ever or gap of 2+ days; start fresh
             data.DailyLoginStreak = 1
         end
         data.LastLoginDate = today
@@ -390,15 +409,11 @@ function DataStoreManager.AddCoins(player, amount)
     if not isValidPlayer(player) then
         return false
     end
-    if type(amount) ~= "number" or amount ~= amount then -- NaN check
+    if not isValidCoinAmount(amount) then
         print("[DataStoreManager] AddCoins: invalid amount.")
         return false
     end
     amount = math.floor(amount)
-    if amount <= 0 then
-        print("[DataStoreManager] AddCoins: amount must be positive.")
-        return false
-    end
 
     local data = playerDataCache[player.UserId]
     if not data then
@@ -431,15 +446,11 @@ function DataStoreManager.RemoveCoins(player, amount)
     if not isValidPlayer(player) then
         return false
     end
-    if type(amount) ~= "number" or amount ~= amount then
+    if not isValidCoinAmount(amount) then
         print("[DataStoreManager] RemoveCoins: invalid amount.")
         return false
     end
     amount = math.floor(amount)
-    if amount <= 0 then
-        print("[DataStoreManager] RemoveCoins: amount must be positive.")
-        return false
-    end
 
     local data = playerDataCache[player.UserId]
     if not data then
@@ -560,14 +571,7 @@ function DataStoreManager.RemoveCreature(player, creatureId)
     for i, creature in ipairs(data.Creatures) do
         if creature.Id == creatureId then
             table.remove(data.Creatures, i)
-            -- Also unequip if equipped
-            if data.EquippedItems then
-                for j = #data.EquippedItems, 1, -1 do
-                    if data.EquippedItems[j] == creatureId then
-                        table.remove(data.EquippedItems, j)
-                    end
-                end
-            end
+            unequipById(data, creatureId)
             print(string.format(
                 "[DataStoreManager] Removed creature '%s' from %s.",
                 creatureId, player.Name
@@ -670,14 +674,7 @@ function DataStoreManager.RemoveInventoryItem(player, itemId)
     for i, item in ipairs(data.Inventory) do
         if item.Id == itemId then
             table.remove(data.Inventory, i)
-            -- Also unequip if equipped
-            if data.EquippedItems then
-                for j = #data.EquippedItems, 1, -1 do
-                    if data.EquippedItems[j] == itemId then
-                        table.remove(data.EquippedItems, j)
-                    end
-                end
-            end
+            unequipById(data, itemId)
             print(string.format(
                 "[DataStoreManager] Removed item '%s' from %s's inventory.",
                 itemId, player.Name
