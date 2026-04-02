@@ -16,7 +16,8 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players           = game:GetService("Players")
 
-local GameConfig = require(script.Parent.Parent.Shared.GameConfig)
+local GameConfig        = require(script.Parent.Parent.Shared.GameConfig)
+local DataStoreManager  = require(script.Parent.DataStoreManager)
 
 -- ============================================================
 -- Remote Events (created once, reused every fight)
@@ -296,14 +297,11 @@ local function onPlaceBet(player, monkeyIndex, amount)
         return
     end
 
-    -- Deduct coins via DataStoreManager (caller is expected to have loaded
-    -- player data already).  We do a lightweight balance check here.
-    local DSM = require(script.Parent.DataStoreManager)
-    local data = DSM.GetData and DSM.GetData(player.UserId)
-    if not data or (data.Coins or 0) < amount then
+    -- Deduct coins via DataStoreManager (validates balance internally)
+    local success = DataStoreManager.RemoveCoins(player, amount)
+    if not success then
         return
     end
-    data.Coins = data.Coins - amount
 
     activeBets[player.UserId] = {
         MonkeyIndex = monkeyIndex,
@@ -315,7 +313,6 @@ end
 
 --- Pay out winning bets after a fight finishes.
 local function resolveBets(winnerIndex)
-    local DSM = require(script.Parent.DataStoreManager)
     local multiplier = GameConfig.Betting.PayoutMultipliers.MonkeyFight
     local houseEdge  = GameConfig.Betting.HouseEdge
 
@@ -332,9 +329,10 @@ local function resolveBets(winnerIndex)
         -- else: player loses stake (already deducted)
 
         if payout > 0 then
-            local data = DSM.GetData and DSM.GetData(userId)
-            if data then
-                data.Coins = (data.Coins or 0) + payout
+            -- Look up the Player instance; they may have disconnected
+            local player = Players:GetPlayerByUserId(userId)
+            if player then
+                DataStoreManager.AddCoins(player, payout)
             end
         end
 
