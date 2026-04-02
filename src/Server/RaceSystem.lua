@@ -156,10 +156,10 @@ local function buildRacer(racerData, raceType)
             + getEquipmentBonus(racerData.Equipment, growthKey)
     end
 
-    local spd = calc(template.Stats.SPD, "SPD")
-    local sta = calc(template.Stats.STA, "STA")
-    local acc = calc(template.Stats.ACC, "ACC")
-    local luck = calc(template.Stats.LUCK, "LUCK")
+    local spd = calc(template.BaseStats.SPD, "SPD")
+    local sta = calc(template.BaseStats.STA, "STA")
+    local acc = calc(template.BaseStats.ACC, "ACC")
+    local luck = calc(template.BaseStats.LUCK, "LUCK")
 
     return {
         -- Identity
@@ -277,7 +277,7 @@ local function simulateTick(race)
         racer.TicksElapsed = racer.TicksElapsed + 1
 
         -- 1. Acceleration ramp — approaches top speed over time
-        local accFactor = math.min(1.0, racer.TicksElapsed / math.max(1, ACC_RAMP_TICKS - racer.ACC * 0.08))
+        local accFactor = math.min(1.0, racer.TicksElapsed / math.max(3, ACC_RAMP_TICKS - racer.ACC * 0.08))
 
         -- 2. Base speed with small random variance (±10%) influenced by LUCK
         local variance = 1.0 + (math.random() - 0.5) * 0.20
@@ -489,13 +489,9 @@ local function resolveBets(race)
                 if racerPlace == 1 then
                     local data = DataStoreManager.GetPlayerData(player)
                     if data and data.Statistics then
-                        DataStoreManager.UpdatePlayerData(player, "Statistics",
-                            (function()
-                                local stats = data.Statistics
-                                stats[statKey] = (stats[statKey] or 0) + 1
-                                return stats
-                            end)()
-                        )
+                        local stats = data.Statistics
+                        stats[statKey] = (stats[statKey] or 0) + 1
+                        DataStoreManager.UpdatePlayerData(player, "Statistics", stats)
                     end
                 end
             end
