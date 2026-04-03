@@ -149,7 +149,7 @@ local function getPlayerData(player)
     if not isValidPlayer(player) then
         return nil
     end
-    return DataStoreManager:GetData(player)
+    return DataStoreManager.GetPlayerData(player)
 end
 
 --- Locate a creature record in the player's Creatures array by Id.
@@ -436,7 +436,7 @@ function EvolutionSystem.AddExperience(player, creatureId, amount)
     creature.Experience = (creature.Experience or 0) + amount
     local levelsGained = processLevelUps(creature)
 
-    DataStoreManager:SaveData(player)
+    DataStoreManager.SavePlayerData(player)
 
     if levelsGained > 0 and Remotes.LevelUp then
         Remotes.LevelUp:FireClient(player, {
@@ -487,7 +487,7 @@ function EvolutionSystem.CheckEvolution(player, creatureId)
     local oldId = creature.Id
     creature.Id = evoInfo.NextFormId
 
-    DataStoreManager:SaveData(player)
+    DataStoreManager.SavePlayerData(player)
 
     if Remotes.Evolution then
         Remotes.Evolution:FireClient(player, {
@@ -565,7 +565,7 @@ function EvolutionSystem.TrainCreature(player, creatureId)
     -- Set cooldown
     trainingCooldowns[userId][creatureId] = now
 
-    DataStoreManager:SaveData(player)
+    DataStoreManager.SavePlayerData(player)
 
     -- Notify client
     if Remotes.TrainResult then
@@ -663,7 +663,7 @@ function EvolutionSystem.FeedCreature(player, creatureId, itemId)
         0, MAX_AFFECTION
     )
 
-    DataStoreManager:SaveData(player)
+    DataStoreManager.SavePlayerData(player)
 
     -- Notify client
     if Remotes.FeedResult then
@@ -708,7 +708,7 @@ function EvolutionSystem.AddBattleAffection(player, creatureId)
         (creature.Affection or 0) + AFFECTION_PER_BATTLE,
         0, MAX_AFFECTION
     )
-    DataStoreManager:SaveData(player)
+    DataStoreManager.SavePlayerData(player)
 end
 
 -- ============================================================
